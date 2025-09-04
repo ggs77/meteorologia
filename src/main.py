@@ -1,78 +1,86 @@
 import pandas as pd
 from pathlib import Path
-from src.api.open_meteo import get_historical_weather
+from src.api.open_meteo import get_historical_weather_range
 from src.utils.excel_handler import load_data_from_excel, save_data_to_excel
 import time
 
 # --- Constantes de configuración ---
 INPUT_FILE = Path("data/raw/datos_entrada.xlsx")
 OUTPUT_FILE = Path("data/processed/datos_salida.xlsx")
-REQUIRED_COLS = ["Fecha", "Hora", "Latitud", "Longitud"]
-WEATHER_COLS = ["Humedad", "Temperatura", "Lluvia"]
 
 def process_data(df):
-    """Procesa el DataFrame para obtener los datos climáticos."""
+    """
+    Procesa el DataFrame para obtener los datos climáticos de uno o varios días completos.
+    """
+    required_cols = {"Latitud", "Longitud", "Inicio"}
+    if not required_cols.issubset(df.columns):
+        raise ValueError(f"El archivo de entrada debe contener las columnas: {', '.join(required_cols)}")
     
-    # Crear las columnas de clima si no existen
-    for col in WEATHER_COLS:
-        if col not in df.columns:
-            df[col] = None
+    return process_data_range(df)
 
+def process_data_range(df):
+    """
+    Procesa el DataFrame para obtener los datos climáticos de un rango de fechas por día.
+    """
+    new_df_data = []
     total_rows = len(df)
+    
     for index, row in df.iterrows():
         print(f"Procesando fila {index + 1}/{total_rows}...")
         
-        fecha = row["Fecha"]
-        hora = row["Hora"]
-        latitud = row["Latitud"]
-        longitud = row["Longitud"]
-
-        # Validar y convertir datos
-        if pd.isna(latitud) or pd.isna(longitud) or pd.isna(fecha) or pd.isna(hora):
-            print(f"Fila {index + 1}: Datos incompletos, saltando.")
+        latitud = row.get("Latitud")
+        longitud = row.get("Longitud")
+        
+        if pd.isna(latitud) or pd.isna(longitud):
+            print(f"Fila {index + 1}: Latitud o Longitud incompletas, saltando.")
             continue
         
         try:
             latitud_f = float(latitud)
             longitud_f = float(longitud)
-            date_str = pd.to_datetime(fecha).strftime('%Y-%m-%d')
+            start_date_str = pd.to_datetime(row["Inicio"]).strftime('%Y-%m-%d')
             
-            # Lógica para manejar diferentes formatos de hora
-            if isinstance(hora, pd.Timedelta):
-                time_str = (pd.Timestamp('1900-01-01') + hora).time().strftime('%H:%M:%S')
-            elif isinstance(hora, pd.Timestamp):
-                time_str = hora.strftime('%H:%M:%S')
-            else: # Asumir string
-                time_str = str(hora)
-                
+            # Si no hay fecha de fin, se procesa solo la fecha de inicio
+            end_date_str = start_date_str
+            if "Fin" in df.columns and not pd.isna(row["Fin"]):
+                end_date_str = pd.to_datetime(row["Fin"]).strftime('%Y-%m-%d')
+
         except (ValueError, TypeError) as e:
             print(f"Fila {index + 1}: Error de formato de datos ({e}), saltando.")
             continue
-        
-        # Llamada a la API
-        weather_data = get_historical_weather(latitud_f, longitud_f, date_str, time_str)
+
+        print(f"Solicitando datos para Lat: {latitud_f}, Lon: {longitud_f} desde {start_date_str} hasta {end_date_str}.")
+        weather_data = get_historical_weather(latitud_f, longitud_f, start_date_str, end_date_str)
         
         if weather_data:
-            for col, value in weather_data.items():
-                df.loc[index, col] = value
+            for hourly_data in weather_data:
+                new_row = {
+                    "Fecha": hourly_data["fecha_hora"],
+                    "Latitud": latitud_f,
+                    "Longitud": longitud_f,
+                    "Temperatura": hourly_data["temperatura_2m"],
+                    "Humedad": hourly_data["humedad_2m"],
+                    "Lluvia": hourly_data["lluvia"]
+                }
+                new_df_data.append(new_row)
         else:
-            print(f"No se pudieron obtener datos climáticos para Lat: {latitud_f}, Lon: {longitud_f} el {date_str} a las {time_str}.")
+            print(f"No se pudieron obtener datos climáticos para el rango del {start_date_str} al {end_date_str}.")
 
-        # Pausa para no saturar la API
-        time.sleep(0.1)
-
-    return df
+        time.sleep(0.1) # Pausa entre cada llamada de rango para no saturar la API
+        
+    if not new_df_data:
+        return pd.DataFrame(columns=["Fecha", "Latitud", "Longitud", "Temperatura", "Humedad", "Lluvia"])
+    
+    return pd.DataFrame(new_df_data)
 
 # --- Ejecutar el programa principal ---
 if __name__ == "__main__":
     try:
-        # Cargar los datos usando la función del handler
-        df_embarques = load_data_from_excel(INPUT_FILE, REQUIRED_COLS)
+        df_entrada = load_data_from_excel(INPUT_FILE)
         
-        # Procesar los datos
-        df_processed = process_data(df_embarques)
+        df_processed = process_data(df_entrada)
         
-        # Guardar los datos procesados usando la función del handler
         save_data_to_excel(df_processed, OUTPUT_FILE)
+        print("\nProceso finalizado. El archivo de salida se ha guardado en 'data/processed/datos_salida.xlsx'.")
     except Exception as e:
         print(f"El programa principal falló: {e}")

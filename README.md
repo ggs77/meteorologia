@@ -1,12 +1,8 @@
-
-
-
-
 # Script de Extracción de Datos Climáticos
 
 ### Propósito
 
-Este proyecto es un script de Python que utiliza la API de **Open-Meteo** para obtener datos climáticos históricos (temperatura, humedad y lluvia) y los añade a un archivo de Excel. Sirve como una herramienta genérica y versátil para cualquier proyecto que necesite enriquecer datos de ubicación con información meteorológica de un momento y lugar específico.
+Este proyecto es un script de Python que utiliza la API de **Open-Meteo** para obtener datos climáticos históricos (temperatura, humedad y lluvia) por días completos y los añade a un archivo de Excel. Sirve como una herramienta genérica y versátil para cualquier proyecto que necesite enriquecer datos de ubicación con información meteorológica de un rango de fechas.
 
 El código está diseñado para ser modular y fácil de mantener, con la lógica de la API, el manejo de archivos y el flujo principal del programa separados en distintos módulos.
 
@@ -34,36 +30,28 @@ mi_proyecto_clima/
 
 1. **Clona el repositorio:**
 
-   ```
-   git clone https://github.com/tu-usuario/mi_proyecto_clima.git
-   cd mi_proyecto_clima
-   ```
+  `   git clone [https://github.com/tu-usuario/mi_proyecto_clima.git](https://github.com/tu-usuario/mi_proyecto_clima.git)   cd mi_proyecto_clima   `
 
-2. **Instala las dependencias:** Asegúrate de tener Python 3.6 o superior. Las bibliotecas necesarias están listadas en `requirements.txt`.
+1. **Instala las dependencias:** Asegúrate de tener Python 3.6 o superior. Las bibliotecas necesarias están listadas en `requirements.txt`.
 
-   ```
-   pip install -r requirements.txt
-   ```
+  `   pip install -r requirements.txt   `
 
-3. **Prepara el archivo de entrada:** Coloca tu archivo de Excel en la carpeta `data/raw/` y renómbralo a **`datos_entrada.xlsx`**.
+1. **Prepara el archivo de entrada:** Coloca tu archivo de Excel en la carpeta `data/raw/` y renómbralo a **`datos_entrada.xlsx`**.
+2. **Ejecuta el script:** Desde la raíz del proyecto, ejecuta el script principal.
 
-4. **Ejecuta el script:** Desde la raíz del proyecto, ejecuta el script principal.
+  `   python src/main.py   `
 
-   ```
-   python src/main.py
-   ```
-
-El script leerá tu archivo de entrada, consultará la API para cada fila y guardará los resultados en un nuevo archivo llamado **`datos_salida.xlsx`** dentro de la carpeta `data/processed/`.
+El script leerá tu archivo de entrada, consultará la API para cada fila y guardará los resultados, incluyendo los datos horarios para cada día completo, en un nuevo archivo llamado **`datos_salida.xlsx`** dentro de la carpeta `data/processed/`.
 
 ### Formato del Archivo de Entrada (`datos_entrada.xlsx`)
 
 El script requiere que el archivo de Excel de entrada tenga una hoja de cálculo con las siguientes columnas y nombres exactos para poder procesar los datos correctamente:
 
-| Columna      | Tipo de Dato | Descripción                                                  |
-| ------------ | ------------ | ------------------------------------------------------------ |
-| **Fecha**    | `Fecha`      | La fecha del evento en cualquier formato reconocido por pandas (ej. `DD-MM-AAAA` o `YYYY-MM-DD`). |
-| **Hora**     | `Hora`       | La hora del evento (ej. `10:00`, `14:30:00`).                |
-| **Latitud**  | `Numérico`   | La latitud de la ubicación.                                  |
-| **Longitud** | `Numérico`   | La longitud de la ubicación.                                 |
+| **Columna**  | **Tipo de Dato** | **Descripción**                                              |
+| ------------ | ---------------- | ------------------------------------------------------------ |
+| **Inicio**   | `Fecha`          | La fecha de inicio del rango (ej. `DD-MM-AAAA` o `YYYY-MM-DD`). |
+| **Fin**      | `Fecha`          | **(Opcional)** La fecha de fin del rango. Si se omite, el script procesará solo el día de la fecha de inicio. |
+| **Latitud**  | `Numérico`       | La latitud de la ubicación.                                  |
+| **Longitud** | `Numérico`       | La longitud de la ubicación.                                 |
 
-El script añadirá automáticamente las columnas **"Humedad"**, **"Temperatura"** y **"Lluvia"** al DataFrame. Si ya existen, las rellenará con los datos de la API.
+El script añadirá automáticamente las columnas **"Fecha"**, **"Humedad"**, **"Temperatura"** y **"Lluvia"** al DataFrame de salida, proporcionando un registro horario detallado para cada día procesado.

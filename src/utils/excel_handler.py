@@ -1,13 +1,12 @@
 import pandas as pd
 from pathlib import Path
 
-def load_data_from_excel(file_path: Path, required_columns: list):
+def load_data_from_excel(file_path: Path):
     """
     Carga los datos de un archivo Excel en un DataFrame y valida las columnas.
     
     Args:
         file_path (Path): La ruta al archivo Excel.
-        required_columns (list): Lista de columnas que deben existir en el archivo.
 
     Returns:
         pd.DataFrame: El DataFrame cargado.
@@ -19,9 +18,6 @@ def load_data_from_excel(file_path: Path, required_columns: list):
         df = pd.read_excel(file_path)
         print(f"Archivo '{file_path}' cargado exitosamente. Columnas: {df.columns.tolist()}")
 
-        if not all(col in df.columns for col in required_columns):
-            raise ValueError(f"El archivo Excel debe contener las columnas: {required_columns}")
-        
         return df
     except Exception as e:
         raise Exception(f"Error al cargar el archivo Excel: {e}")

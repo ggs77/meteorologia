@@ -1,49 +1,48 @@
 import requests
 import time
+from datetime import datetime, timedelta
 
-API_BASE_URL = "https://api.open-meteo.com/v1/forecast"
+API_BASE_URL = "https://archive-api.open-meteo.com/v1/era5"
 API_PARAMS = {
     "hourly": "temperature_2m,relative_humidity_2m,rain",
     "timezone": "Europe/Madrid",
-    "past_days": 0
 }
 
-def get_historical_weather(latitude, longitude, date_str, time_str, retries=3, delay=1):
+def get_historical_weather(latitude, longitude, start_date_str, end_date_str, retries=3, delay=1):
     """
     Consulta la API de Open-Meteo para obtener datos climáticos históricos
-    con lógica de reintentos.
+    de un rango de fechas. La API devuelve datos horarios para cada día completo
+    en el rango especificado.
     """
     params = {
         **API_PARAMS,
         "latitude": latitude,
         "longitude": longitude,
-        "start_date": date_str,
-        "end_date": date_str
+        "start_date": start_date_str,
+        "end_date": end_date_str
     }
 
     for attempt in range(retries):
         try:
-            response = requests.get(API_BASE_URL, params=params, timeout=10)
-            response.raise_for_status()
+            response = requests.get(API_BASE_URL, params=params, timeout=30)
+            response.raise_for_status()  # Lanza un error si la solicitud no es exitosa
             data = response.json()
-
-            target_hour_str = time_str.split(':')[0] + ":00"
-            if "hourly" in data and "time" in data["hourly"]:
-                for i, api_time in enumerate(data["hourly"]["time"]):
-                    if target_hour_str in api_time:
-                        temperature = data["hourly"]["temperature_2m"][i]
-                        humidity = data["hourly"]["relative_humidity_2m"][i]
-                        rain = data["hourly"]["rain"][i]
-                        return {
-                            "Temperatura": temperature,
-                            "Humedad": humidity,
-                            "Lluvia": rain
-                        }
-                print(f"No se encontraron datos para la hora {time_str} en {date_str}. Intento {attempt + 1}/{retries}.")
-                time.sleep(delay * (attempt + 1))
-            else:
-                print(f"Formato de respuesta inesperado. Intento {attempt + 1}/{retries}.")
-                time.sleep(delay * (attempt + 1))
+            
+            if "hourly" in data:
+                # Procesar los datos hora a hora y añadirlos a una lista
+                all_weather_data = []
+                for i in range(len(data["hourly"]["time"])):
+                    hourly_data = {
+                        "fecha_hora": data["hourly"]["time"][i],
+                        "temperatura_2m": data["hourly"]["temperature_2m"][i],
+                        "humedad_2m": data["hourly"]["relative_humidity_2m"][i],
+                        "lluvia": data["hourly"]["rain"][i]
+                    }
+                    all_weather_data.append(hourly_data)
+                return all_weather_data
+            
+            print(f"Formato de respuesta inesperado. Intento {attempt + 1}/{retries}.")
+            time.sleep(delay * (attempt + 1))
 
         except requests.exceptions.RequestException as e:
             print(f"Error en la consulta de la API (Intento {attempt + 1}/{retries}): {e}")
