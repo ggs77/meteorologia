@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-from src.api.open_meteo import get_historical_weather_range
+from src.api.open_meteo import get_historical_weather
 from src.utils.excel_handler import load_data_from_excel, save_data_to_excel
 import time
 
